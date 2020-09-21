@@ -18,18 +18,15 @@ Bounce debMagnet = Bounce();
 
 #define LED_LENGTH 4
  
-#define SECOND 1000
-#define MINUTES SECOND * 60;
-#define CHARGE_TIME  5* SECOND 
-#define CHARGE_INTERVAL  CHARGE_TIME /LED_LENGTH
+int SECOND  = 1000;
+long MINUTES = SECOND * 60;
+long CHARGE_TIME  = 5* SECOND;
+long CHARGE_INTERVAL   = CHARGE_TIME /LED_LENGTH;
 
 #define  pinSound 6
 
 const int SOUND_LENGTH = 200;
 const int SOUND_BASE_FREQ = 1174;
-
-const int CHARGE_FULL_TIME = 5*SECOND; 
-const int CHARGE_INTERVAL_TIME = CHARGE_FULL_TIME / (LED_LENGTH-1);
 
 String state;
 
@@ -100,10 +97,8 @@ void charge(){
    tone(pinSound, SOUND_BASE_FREQ, SOUND_LENGTH);
    delay(CHARGE_INTERVAL);
 
-   digitalWrite(pinLedRed4, HIGH);
+   _magnetIsDisactivated();
   
-   tone(pinSound, G3, SECOND);
-   
    state = "charged";
    Serial.println("Im charged");
 }
@@ -111,20 +106,8 @@ void charge(){
 void charged() {
   // need to activate magnet 
   if(_longSignal(LOW, SECOND*0.4, debMagnet)){
-    Serial.println("charged -> waitForRelease");
-
-    digitalWrite(pinLedRed1, LOW);
-    digitalWrite(pinLedRed2, LOW);
-    digitalWrite(pinLedRed3, LOW);
-    digitalWrite(pinLedRed4, LOW);
-    digitalWrite(pinLedGreen, HIGH);
-   
-    tone(pinSound, G3, 100);
-    delay(200);
-    tone(pinSound, G3, 100);
-    delay(200);
-    tone(pinSound, G3, 100);
-    delay(200);
+    _magnetIsActivated();
+    Serial.println("charged -> waitForReleaseMagnet");
     state = "waitForReleaseMagnet";
   }
 }
@@ -140,7 +123,7 @@ void waitForReleaseMagnet(){
 unsigned long timeoutStartTime = 0;
 void waitForPressButton(){
   long TIMEOUT = 5*SECOND;
-  if(_longSignal(LOW, SECOND*0.4, debButton)){
+  if(debButton.changed() && !debButton.read()){
     Serial.println("waitForPressButton-> waitForReleaseButton");
     timeoutStartTime=0;
     state = "waitForReleaseButton";
@@ -149,11 +132,7 @@ void waitForPressButton(){
     if(!timeoutStartTime) timeoutStartTime = currentTime;
     if((currentTime - timeoutStartTime)>TIMEOUT){
       Serial.println("Wait for press timeout!");
-      digitalWrite(pinLedGreen, LOW);
-      digitalWrite(pinLedRed1, HIGH);
-      digitalWrite(pinLedRed2, HIGH);
-      digitalWrite(pinLedRed3, HIGH);
-      digitalWrite(pinLedRed4, HIGH);
+      _magnetIsDisactivated();
       timeoutStartTime=0;
       state = "charged";
     }
@@ -161,7 +140,7 @@ void waitForPressButton(){
 }
 
 void waitForReleaseButton(){
-  if(_longSignal(HIGH, SECOND*0.4, debButton)){
+  if(debButton.changed() && debButton.read()){
     Serial.println("waitForReleaseButton -> discharge");
     state = "discharge";
   }
@@ -171,7 +150,6 @@ void waitForReleaseButton(){
 void discharge(){
   Serial.println("Discharge");
   const int DELAY_LENGTH = 1000;
-  delay(200);
   
   digitalWrite(pinLedGreen, LOW);
   digitalWrite(pinVibro1, HIGH);
@@ -196,6 +174,53 @@ void discharge(){
   Serial.println("I'm discharged!");
 }
 
+
+void _magnetIsDisactivated() {
+  tone(pinSound, G3, SECOND);
+
+  for(int i=0; i<3; i++){
+    _clearAllLeds();
+    delay(200);
+    _allLedsRed();
+    if (i<2) delay(200); 
+  }
+}
+
+
+void _magnetIsActivated() {
+
+  for(int i=0; i<3; i++){
+    tone(pinSound, G3, 100);
+    _clearAllLeds();
+    delay(100);
+    _allLedsGreen();
+    if (i<2) delay(100); 
+  }
+}
+
+void _allLedsGreen(){
+  digitalWrite(pinLedRed1, LOW);
+  digitalWrite(pinLedRed2, LOW);
+  digitalWrite(pinLedRed3, LOW);
+  digitalWrite(pinLedRed4, LOW);
+  digitalWrite(pinLedGreen, HIGH);
+}
+
+void _allLedsRed(){
+  digitalWrite(pinLedGreen, LOW);
+  digitalWrite(pinLedRed1, HIGH);
+  digitalWrite(pinLedRed2, HIGH);
+  digitalWrite(pinLedRed3, HIGH);
+  digitalWrite(pinLedRed4, HIGH);
+}
+
+void _clearAllLeds(){
+  digitalWrite(pinLedGreen, LOW);
+  digitalWrite(pinLedRed1, LOW);
+  digitalWrite(pinLedRed2, LOW);
+  digitalWrite(pinLedRed3, LOW);
+  digitalWrite(pinLedRed4, LOW);
+}
 
 unsigned long startTime=0;
 bool _longSignal(int expectedValue, long timeout, Bounce debouncer){

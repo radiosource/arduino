@@ -19,9 +19,9 @@ Bounce BUTTON_RESET = Bounce();
 long SECOND = 1000;
 long MINUTES = SECOND * 60;
 
-long RETENTION_TIMOUT;
+unsigned long RETENTION_TIMOUT = DEFAULT_RETENTION_MIN * MINUTES;
 
-String state = "postSetup";
+String state = "waitForPress";
 String activeColor;
 int activeLedPin;
  
@@ -43,7 +43,7 @@ void setup() {
   BUTTON_GREEN.interval(5);
 
   BUTTON_RESET.attach(PIN_BUTTON_RESET);
-  BUTTON_RESET.interval(5);
+  BUTTON_RESET.interval(25);
   
 }
 
@@ -70,27 +70,41 @@ void changeState(){
 
 int pressedTime=0;  
 void postSetup(){
+    
     if(BUTTON_RESET.changed() && !BUTTON_RESET.read()){
       Serial.println("++");
         tone(PIN_SOUND, G3, 100);
         pressedTime++;
     }
-    if(BUTTON_GREEN.changed() && !BUTTON_GREEN.read()){
+    if((BUTTON_GREEN.changed() && !BUTTON_GREEN.read()) || (BUTTON_RED.changed() && !BUTTON_RED.read())){
       Serial.println("pressedTime>>");
       Serial.println(pressedTime);
       if(!pressedTime)  pressedTime= DEFAULT_RETENTION_MIN;
       RETENTION_TIMOUT = MINUTES * pressedTime;
+
+      if(pressedTime<=20){
+        for(int i=0; i<pressedTime; i++){
+              delay(200);
+              tone(PIN_SOUND, G3, 200);
+              digitalWrite(PIN_LED_GREEN, HIGH);
+              delay(200);
+              digitalWrite(PIN_LED_GREEN, LOW);
+            }
+      }else{
+        tone(PIN_SOUND, G3, 800);
+        digitalWrite(PIN_LED_GREEN, HIGH);
+        delay(400);
+        digitalWrite(PIN_LED_GREEN, LOW);
+        
+        digitalWrite(PIN_LED_RED, HIGH);
+        delay(400);
+        digitalWrite(PIN_LED_RED, LOW);
+        
+        digitalWrite(PIN_LED_GREEN, HIGH);
+        delay(400);
+        digitalWrite(PIN_LED_GREEN, LOW);
+      }
       
-      tone(PIN_SOUND, G3, 800);
-      
-      digitalWrite(PIN_LED_RED, HIGH);
-      delay(400);
-      digitalWrite(PIN_LED_RED, LOW);
-      
-      digitalWrite(PIN_LED_GREEN, HIGH);
-      delay(400);
-      digitalWrite(PIN_LED_GREEN, LOW);
-     
       state="waitForPress";
     }
 }
@@ -117,6 +131,7 @@ void win(){
    }
 }
 
+bool setuped = false;
 unsigned long timing=0;
 void waitForPress(){
   digitalWrite(PIN_LED_RED, LOW);
@@ -135,6 +150,7 @@ void waitForPress(){
     tone(PIN_SOUND, G3, 100);
     delay(200);
     timing=millis();
+    
   }else if (BUTTON_GREEN.changed() && !BUTTON_GREEN.read()){
     digitalWrite(PIN_LED_GREEN, HIGH);
     activeLedPin=PIN_LED_GREEN;
@@ -148,14 +164,31 @@ void waitForPress(){
     tone(PIN_SOUND, G3, 100);
     delay(200);
     timing=millis();
+    
+  }else if (!setuped  && _longSignal(LOW, 2*SECOND, BUTTON_RESET)){
+    setuped = true;
+    state="postSetup";
+    
+    tone(PIN_SOUND, G3, 200);
+    digitalWrite(PIN_LED_GREEN, HIGH);
+    delay(400);
+    digitalWrite(PIN_LED_GREEN, LOW);
+    
+    tone(PIN_SOUND, G3, 200);
+    digitalWrite(PIN_LED_RED, HIGH);
+    delay(400);
+    digitalWrite(PIN_LED_RED, LOW);
+    
+    tone(PIN_SOUND, G3, 200);
+    digitalWrite(PIN_LED_GREEN, HIGH);
+    delay(400);
+    digitalWrite(PIN_LED_GREEN, LOW);
   }
 }
 
 
 
-//long RETENTION_TIMOUT = MINUTES*5;
 long retentionStartTime = 0;
-
 void retention(){  
    unsigned long currentTime=millis();
     if(!retentionStartTime) retentionStartTime = currentTime;
@@ -176,4 +209,22 @@ void retention(){
       }
     }
     
+}
+
+unsigned long startTime=0;
+bool _longSignal(int expectedValue, long timeout, Bounce debouncer){
+  debouncer.update();
+  if(debouncer.read()==expectedValue){
+    unsigned long currentTime=millis();
+    if(!startTime) startTime = currentTime;
+    if((currentTime - startTime)>timeout){
+      Serial.println("_longSignal!");
+      Serial.println(currentTime - startTime);
+      startTime=0;
+      return true;
+    }
+  }else{
+   startTime=0; 
+  }  
+  return false;
 }
