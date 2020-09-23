@@ -21,7 +21,7 @@ Bounce DEB_MAGNET = Bounce();
 
 int redLeds[LED_LENGTH] = {PIN_LED_RED_1, PIN_LED_RED_2, PIN_LED_RED_3, PIN_LED_RED_4};
 int SECOND  = 1000;
-unsigned long MINUTES = SECOND * 60;
+unsigned long MINUTES = 60000;
 long DEFAULT_CHARGE_TIME  = 5* SECOND;
 unsigned long CHARGE_TIME;
 unsigned long CHARGE_INTERVAL;
@@ -36,6 +36,7 @@ const int SOUND_BASE_FREQ = 1174;
 String state;
 
 bool blocked=false;
+
 
 void setup() {
   Serial.begin(9600);
@@ -59,12 +60,11 @@ void setup() {
   DEB_MAGNET.attach(PIN_MAGNET);
   DEB_MAGNET.interval(5);
 
-  SAVED_CHARGE_TIME = EEPROM.read(0);
+  SAVED_CHARGE_TIME = EEPROM.read(1);
 
-  _setChargeTime(DEFAULT_CHARGE_TIME*10);
-//   SAVED_CHARGE_TIME == 255
-//   ? _setChargeTime(DEFAULT_CHARGE_TIME)
-//   : _setChargeTime(SAVED_CHARGE_TIME* MINUTES);
+   SAVED_CHARGE_TIME == 255
+   ? _setChargeTime(DEFAULT_CHARGE_TIME)
+   : _setChargeTime(SAVED_CHARGE_TIME* MINUTES);
 
 
   state="charge";
@@ -108,7 +108,13 @@ void charge(){
        _setupEffects();
        state="postSetup";
    }
-   else if ((currentTime - chargeTimestamp) > CHARGE_INTERVAL){
+   else if ((currentTime - chargeTimestamp) > CHARGE_INTERVAL || !chargeTimestamp){
+    Serial.println("=============");
+    Serial.println(currentTime );
+    Serial.println(chargeTimestamp);
+    Serial.println(CHARGE_INTERVAL);
+    Serial.println(currentTime - chargeTimestamp);
+    
       chargeTimestamp = currentTime;
       digitalWrite(redLeds[ledToActivateIndex++], HIGH);
       tone(PIN_SOUND, SOUND_BASE_FREQ, SOUND_LENGTH);
@@ -126,8 +132,11 @@ void charge(){
 int pressedTime=0;
 void postSetup(){
     if (_longSignal(LOW, 2*SECOND, DEB_BUTTON)){
+        pressedTime--;
         Serial.println("pressedTime::");
         Serial.println(pressedTime);
+        Serial.println("MINUTES::");
+        Serial.println(MINUTES);
         if(pressedTime){
             _setChargeTime(pressedTime* MINUTES);
             _saveChargeTimeToMemory(pressedTime);
@@ -236,8 +245,8 @@ void _setChargeTime(unsigned long chargeTime){
 
 void _saveChargeTimeToMemory(int timeInMinutes){
     SAVED_CHARGE_TIME == 255
-              ? EEPROM.write(0, timeInMinutes)
-              : EEPROM.update(0, timeInMinutes);
+         ? EEPROM.write(1, timeInMinutes)
+         : EEPROM.update(1, timeInMinutes);
 }
 
 void _magnetIsDisactivated() {
