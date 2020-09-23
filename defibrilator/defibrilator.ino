@@ -22,13 +22,13 @@ Bounce DEB_MAGNET = Bounce();
 int redLeds[LED_LENGTH] = {PIN_LED_RED_1, PIN_LED_RED_2, PIN_LED_RED_3, PIN_LED_RED_4};
 int SECOND  = 1000;
 unsigned long MINUTES = 60000;
-long DEFAULT_CHARGE_TIME  = 5* SECOND;
+long DEFAULT_CHARGE_TIME  = 10 * SECOND;
 unsigned long CHARGE_TIME;
 unsigned long CHARGE_INTERVAL;
 
 long SAVED_CHARGE_TIME;
 
-#define  PIN_SOUND 13
+#define  PIN_SOUND 6
 
 const int SOUND_LENGTH = 200;
 const int SOUND_BASE_FREQ = 1174;
@@ -108,13 +108,7 @@ void charge(){
        _setupEffects();
        state="postSetup";
    }
-   else if ((currentTime - chargeTimestamp) > CHARGE_INTERVAL || !chargeTimestamp){
-    Serial.println("=============");
-    Serial.println(currentTime );
-    Serial.println(chargeTimestamp);
-    Serial.println(CHARGE_INTERVAL);
-    Serial.println(currentTime - chargeTimestamp);
-    
+  else if (((currentTime - chargeTimestamp) > CHARGE_INTERVAL) || (!chargeTimestamp && currentTime)){
       chargeTimestamp = currentTime;
       digitalWrite(redLeds[ledToActivateIndex++], HIGH);
       tone(PIN_SOUND, SOUND_BASE_FREQ, SOUND_LENGTH);
@@ -158,7 +152,7 @@ void postSetup(){
 int touchCount=0;
 void charged() {
   // need to activate magnet
-  const int TOUCH_LIMIT=6;
+  const int TOUCH_LIMIT=5;
   if(DEB_MAGNET.changed() && !DEB_MAGNET.read()){
     ++touchCount;
   }
