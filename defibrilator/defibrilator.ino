@@ -22,7 +22,7 @@ Bounce DEB_MAGNET = Bounce();
 int redLeds[LED_LENGTH] = {PIN_LED_RED_1, PIN_LED_RED_2, PIN_LED_RED_3, PIN_LED_RED_4};
 int SECOND  = 1000;
 unsigned long MINUTES = 60000;
-long DEFAULT_CHARGE_TIME  = 10 * SECOND;
+long DEFAULT_CHARGE_TIME  = 5 * SECOND;
 unsigned long CHARGE_TIME;
 unsigned long CHARGE_INTERVAL;
 
@@ -60,7 +60,7 @@ void setup() {
   DEB_MAGNET.attach(PIN_MAGNET);
   DEB_MAGNET.interval(5);
 
-  SAVED_CHARGE_TIME = EEPROM.read(1);
+  SAVED_CHARGE_TIME = EEPROM.read(2);
 
    SAVED_CHARGE_TIME == 255
    ? _setChargeTime(DEFAULT_CHARGE_TIME)
@@ -241,8 +241,8 @@ void _setChargeTime(unsigned long chargeTime){
 
 void _saveChargeTimeToMemory(int timeInMinutes){
     SAVED_CHARGE_TIME == 255
-         ? EEPROM.write(1, timeInMinutes)
-         : EEPROM.update(1, timeInMinutes);
+         ? EEPROM.write(2, timeInMinutes)
+         : EEPROM.update(2, timeInMinutes);
 }
 
 void _magnetIsDisactivated() {
