@@ -1,5 +1,6 @@
-
+#include <EEPROM.h>
 #include <Bounce2.h>
+
 Bounce debButton = Bounce();
 Bounce debMagnet = Bounce();
 #define G3 1568
@@ -17,13 +18,16 @@ Bounce debMagnet = Bounce();
 #define pinLedGreen 5
 
 #define LED_LENGTH 4
- 
+
+int redLeds[LED_LENGTH] = {pinLedRed1, pinLedRed2, pinLedRed3, pinLedRed4}; 
 int SECOND  = 1000;
 long MINUTES = SECOND * 60;
 long CHARGE_TIME  = 5* SECOND;
 long CHARGE_INTERVAL   = CHARGE_TIME /LED_LENGTH;
 
-#define  pinSound 6
+long SAVED_CHARGE_TIME;
+
+#define  pinSound 13
 
 const int SOUND_LENGTH = 200;
 const int SOUND_BASE_FREQ = 1174;
@@ -54,6 +58,14 @@ void setup() {
 
   debMagnet.attach(pinMagnet);
   debMagnet.interval(5);
+
+  SAVED_CHARGE_TIME = EEPROM.read(0); 
+
+  
+  if(SAVED_CHARGE_TIME != 255){
+    CHARGE_TIME  = SAVED_CHARGE_TIME* MINUTES;
+    CHARGE_INTERVAL   = CHARGE_TIME /LED_LENGTH;
+  }
  
   state="charge";
   Serial.println("Start");
@@ -80,32 +92,82 @@ void changeState(){
     waitForReleaseButton();
   }else if (state == "discharge"){
      discharge();
+  } else if(state == "postSetup"){
+    postSetup(); 
   }
 }
 
-void charge(){
-  Serial.println("Charging");
-   tone(pinSound, SOUND_BASE_FREQ, SOUND_LENGTH); 
-   digitalWrite(pinLedRed1, HIGH);
-   delay(CHARGE_INTERVAL);
-   
-   digitalWrite(pinLedRed2, HIGH);
-   tone(pinSound, SOUND_BASE_FREQ, SOUND_LENGTH); 
-   delay(CHARGE_INTERVAL);
-   
-   digitalWrite(pinLedRed3, HIGH);
-   tone(pinSound, SOUND_BASE_FREQ, SOUND_LENGTH);
-   delay(CHARGE_INTERVAL);
 
-   _magnetIsDisactivated();
-  
-   state = "charged";
-   Serial.println("Im charged");
+int pressedTime=0;  
+void postSetup(){
+//    
+//    if(BUTTON_RESET.changed() && !BUTTON_RESET.read()){
+//      Serial.println("++");
+//        tone(PIN_SOUND, G3, 100);
+//        pressedTime++;
+//    }
+//    if(BUTTON_GREEN.changed() && !BUTTON_GREEN.read()){
+//      Serial.println("pressedTime>>");
+//      Serial.println(pressedTime);
+//      if(!pressedTime)  pressedTime= DEFAULT_RETENTION_MIN;
+//      RETENTION_TIMOUT = MINUTES * pressedTime;
+//      if(pressedTime<=20){
+//        for(int i=0; i<pressedTime; i++){
+//              delay(200);
+//              tone(PIN_SOUND, G3, 200);
+//              digitalWrite(PIN_LED_GREEN, HIGH);
+//              delay(200);
+//              digitalWrite(PIN_LED_GREEN, LOW);
+//            }
+//      }else{
+//        tone(PIN_SOUND, G3, 800);
+//        digitalWrite(PIN_LED_GREEN, HIGH);
+//        delay(400);
+//        digitalWrite(PIN_LED_GREEN, LOW);
+//        
+//        digitalWrite(PIN_LED_RED, HIGH);
+//        delay(400);
+//        digitalWrite(PIN_LED_RED, LOW);
+//        
+//        digitalWrite(PIN_LED_GREEN, HIGH);
+//        delay(400);
+//        digitalWrite(PIN_LED_GREEN, LOW);
+//      }
+//      
+//      
+      state="charge";
+//    }
 }
 
+unsigned long chargeTimestamp=0;
+int ledToActivateIndex = 0;
+void charge(){
+   unsigned long currentTime=millis();
+   
+   if ((currentTime - chargeTimestamp) > CHARGE_INTERVAL){      
+      chargeTimestamp = currentTime;
+      digitalWrite(redLeds[ledToActivateIndex++], HIGH);
+      tone(pinSound, SOUND_BASE_FREQ, SOUND_LENGTH); 
+      
+      if (!redLeds[ledToActivateIndex]){
+        ledToActivateIndex=0;
+        chargeTimestamp=0;
+        _magnetIsDisactivated();
+        state = "charged";
+        Serial.println("Im charged");
+      }
+   }
+}
+
+int touchCount=0;
 void charged() {
   // need to activate magnet 
-  if(_longSignal(LOW, SECOND*0.4, debMagnet)){
+  const int TOUCH_LIMIT=6;
+  if(debMagnet.changed() && !debMagnet.read()){
+    ++touchCount;
+  }
+  if(touchCount>TOUCH_LIMIT){
+    touchCount=0;
     _magnetIsActivated();
     Serial.println("charged -> waitForReleaseMagnet");
     state = "waitForReleaseMagnet";
