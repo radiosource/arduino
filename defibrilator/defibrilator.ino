@@ -138,9 +138,11 @@ void postSetup(){
             _setChargeTime(DEFAULT_CHARGE_TIME);
         }
         _setupEffects();
+        chargeTimestamp=0;
+        ledToActivateIndex=0;
         state="charge";
     }
-    else if(DEB_BUTTON.changed() && !DEB_BUTTON.read()){
+    else if(DEB_BUTTON.changed() && DEB_BUTTON.read()){
         Serial.println("++");
         tone(PIN_SOUND, G3, 100);
         pressedTime++;
