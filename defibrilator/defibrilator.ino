@@ -229,7 +229,7 @@ void discharge(){
 
 void _setChargeTime(unsigned long chargeTime){
     CHARGE_TIME  = chargeTime;
-    CHARGE_INTERVAL   = CHARGE_TIME /LED_LENGTH;
+    CHARGE_INTERVAL   = CHARGE_TIME /(LED_LENGTH-1);
     Serial.println("chargeTime::");
     Serial.println(chargeTime);
     Serial.println("CHARGE_INTERVAL::");
